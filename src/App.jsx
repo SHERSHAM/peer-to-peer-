@@ -1146,6 +1146,7 @@ export default function App() {
       {authState==="login"      && <LoginScreen toast={toast}/>}
       {authState==="role_setup" && supaUser && <RoleSetupScreen user={supaUser} onDone={onRoleDone} toast={toast}/>}
 
+      {authState==="app" && profile && !profile.role && <RoleSetupScreen user={supaUser} onDone={onRoleDone} toast={toast}/>}      
       {authState==="app" && profile && screen==="dashboard" && profile.role==="admin"   && <AdminDashboard   profile={profile} onPoll={openPoll} onLogout={logout} toast={toast} onUsers={goUsers} onResetRole={resetRole}/>}
       {authState==="app" && profile && screen==="dashboard" && profile.role==="sir"     && <SirDashboard     profile={profile} onPoll={openPoll} onLogout={logout} onResetRole={resetRole}/>}
       {authState==="app" && profile && screen==="dashboard" && profile.role==="student" && <StudentDashboard profile={profile} onPoll={openPoll} onLogout={logout} onResetRole={resetRole}/>}
