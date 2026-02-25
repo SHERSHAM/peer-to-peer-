@@ -1,4 +1,9 @@
+
 name: Deploy to GitHub Pages
+
+permissions:
+  contents: write
+  pages: write
 
 on:
   push:
@@ -11,6 +16,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # allow the action to push to the repo using the GITHUB_TOKEN
+          persist-credentials: true
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -28,3 +36,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+          publish_branch: gh-pages
