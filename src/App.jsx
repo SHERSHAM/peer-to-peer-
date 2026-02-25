@@ -4,8 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 // ═══════════════════════════════════════════════════════════════════════════════
 // SUPABASE CLIENT
 // ═══════════════════════════════════════════════════════════════════════════════
-const SUPABASE_URL  = "https://gawevaqejpchgmvioufr.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdhd2V2YXFlanBjaGdtdmlvdWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5OTIxNTYsImV4cCI6MjA4NzU2ODE1Nn0.x6WlcXG-moJCr-dXP6VsQnb2CVI58AI-fZfM9HH3W-U";
+// Read Supabase credentials from environment (Vite: import.meta.env)
+const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL || "https://gawevaqejpchgmvioufr.supabase.co";
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdhd2V2YXFlanBjaGdtdmlvdWZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5OTIxNTYsImV4cCI6MjA4NzU2ODE1Nn0.x6WlcXG-moJCr-dXP6VsQnb2CVI58AI-fZfM9HH3W-U";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
