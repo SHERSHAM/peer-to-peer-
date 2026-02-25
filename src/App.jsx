@@ -210,7 +210,7 @@ function ScoreCard({ team, initVal, color, disabled, onChange }) {
   );
 }
 
-function SiteHeader({ profile, onLogout }) {
+function SiteHeader({ profile, onLogout, onResetRole }) {
   const roleColor = { admin:"#bf00ff", sir:"#ffee00", student:"#00f5ff" }[profile?.role] || "#00f5ff";
   const roleLabel = { admin:"⬡ ADMIN", sir:"★ SIR", student:"⬤" }[profile?.role] || "⬤";
   return (
@@ -231,6 +231,12 @@ function SiteHeader({ profile, onLogout }) {
           {roleLabel} {profile?.name}
         </div>
         <Btn small variant="ghost" onClick={onLogout}>Logout</Btn>
+        <Btn small variant="ghost" onClick={async ()=>{
+          if(!confirm('Reset your role and re-open role selection?')) return;
+          try {
+            await onResetRole();
+          } catch(e){ console.error(e); alert('Failed to reset role'); }
+        }}>Change role</Btn>
       </div>
     </div>
   );
@@ -447,7 +453,7 @@ function PollCard({ poll, onOpen, onClose, isAdmin, marked, sirScored }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // USERS PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
-function UsersPage({ profile, onBack, onLogout }) {
+function UsersPage({ profile, onBack, onLogout, onResetRole }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -469,7 +475,7 @@ function UsersPage({ profile, onBack, onLogout }) {
 
   return (
     <div style={{ minHeight:"100vh", position:"relative", zIndex:1 }}>
-      <SiteHeader profile={profile} onLogout={onLogout}/>
+      <SiteHeader profile={profile} onLogout={onLogout} onResetRole={onResetRole}/>
       <div style={{ maxWidth:1200, margin:"0 auto", padding:"32px 20px" }}>
         <button onClick={onBack} style={{ background:"none", border:"none", color:"#506880", cursor:"pointer", fontFamily:"'Share Tech Mono',monospace", fontSize:13, marginBottom:20 }}>← Back to Dashboard</button>
         
@@ -521,7 +527,7 @@ function UsersPage({ profile, onBack, onLogout }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
-function AdminDashboard({ profile, onPoll, onLogout, toast, onUsers }) {
+function AdminDashboard({ profile, onPoll, onLogout, toast, onUsers, onResetRole }) {
   const [polls,   setPolls]  = useState([]);
   const [creating,setCreate] = useState(false);
   const [pName,   setPName]  = useState("");
@@ -571,7 +577,7 @@ function AdminDashboard({ profile, onPoll, onLogout, toast, onUsers }) {
 
   return (
     <div style={{ minHeight:"100vh", position:"relative", zIndex:1 }}>
-      <SiteHeader profile={profile} onLogout={onLogout}/>
+      <SiteHeader profile={profile} onLogout={onLogout} onResetRole={onResetRole}/>
       <div style={{ maxWidth:1100, margin:"0 auto", padding:"32px 20px" }}>
 
         {/* Control buttons */}
@@ -657,7 +663,7 @@ function AdminDashboard({ profile, onPoll, onLogout, toast, onUsers }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // SIR DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
-function SirDashboard({ profile, onPoll, onLogout }) {
+function SirDashboard({ profile, onPoll, onLogout, onResetRole }) {
   const [polls, setPolls] = useState([]);
   useEffect(()=>{
     (async()=>{
@@ -674,7 +680,7 @@ function SirDashboard({ profile, onPoll, onLogout }) {
   const scored = polls.filter(p=>p.sirScored).length;
   return (
     <div style={{ minHeight:"100vh", position:"relative", zIndex:1 }}>
-      <SiteHeader profile={profile} onLogout={onLogout}/>
+      <SiteHeader profile={profile} onLogout={onLogout} onResetRole={onResetRole}/>
       <div style={{ maxWidth:900, margin:"0 auto", padding:"32px 20px" }}>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(155px,1fr))", gap:14, marginBottom:36 }}>
           {[{label:"Total Polls",val:polls.length,col:"#00f5ff"},{label:"Scored",val:scored,col:"#00ff88"},{label:"Pending",val:polls.length-scored,col:"#ffee00"}].map(s=>(
@@ -698,7 +704,7 @@ function SirDashboard({ profile, onPoll, onLogout }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // STUDENT DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
-function StudentDashboard({ profile, onPoll, onLogout }) {
+function StudentDashboard({ profile, onPoll, onLogout, onResetRole }) {
   const [polls, setPolls] = useState([]);
   useEffect(()=>{
     (async()=>{
@@ -713,7 +719,7 @@ function StudentDashboard({ profile, onPoll, onLogout }) {
   },[profile.id]);
   return (
     <div style={{ minHeight:"100vh", position:"relative", zIndex:1 }}>
-      <SiteHeader profile={profile} onLogout={onLogout}/>
+      <SiteHeader profile={profile} onLogout={onLogout} onResetRole={onResetRole}/>
       <div style={{ maxWidth:900, margin:"0 auto", padding:"32px 20px" }}>
         <SectionLabel>Open Polls — Give Your Marks</SectionLabel>
         {polls.length===0?<div style={{ textAlign:"center",padding:80,color:"#506880",fontFamily:"'Share Tech Mono',monospace" }}>No polls available.</div>:(
@@ -1078,6 +1084,23 @@ export default function App() {
     }
   }, [authState, profile]);
 
+  // Allow user to reset their role (useful for testing or to re-open role setup)
+  async function resetRole() {
+    if (!supaUser) return;
+    try {
+      // Clear role_chosen marker in user metadata
+      await supabase.auth.updateUser({ data: { role_chosen: false } });
+      // Clear role in profiles table
+      await supabase.from('profiles').update({ role: null, name: null }).eq('id', supaUser.id);
+      setProfile(null);
+      setAuthState('role_setup');
+      toast('Role reset — please choose your role again', 'info');
+    } catch (err) {
+      console.error('resetRole error', err);
+      toast('Failed to reset role', 'error');
+    }
+  }
+
   // Defer expensive particle rendering until browser is idle to speed initial load
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1123,11 +1146,11 @@ export default function App() {
       {authState==="login"      && <LoginScreen toast={toast}/>}
       {authState==="role_setup" && supaUser && <RoleSetupScreen user={supaUser} onDone={onRoleDone} toast={toast}/>}
 
-      {authState==="app" && profile && screen==="dashboard" && profile.role==="admin"   && <AdminDashboard   profile={profile} onPoll={openPoll} onLogout={logout} toast={toast} onUsers={goUsers}/>}
-      {authState==="app" && profile && screen==="dashboard" && profile.role==="sir"     && <SirDashboard     profile={profile} onPoll={openPoll} onLogout={logout}/>}
-      {authState==="app" && profile && screen==="dashboard" && profile.role==="student" && <StudentDashboard profile={profile} onPoll={openPoll} onLogout={logout}/>}
-      {authState==="app" && profile && screen==="poll"      && <PollScreen pollId={pollId} profile={profile} onBack={goBack} toast={toast}/>}
-      {authState==="app" && profile && screen==="users"     && <UsersPage profile={profile} onBack={backToDash} onLogout={logout}/>}
+      {authState==="app" && profile && screen==="dashboard" && profile.role==="admin"   && <AdminDashboard   profile={profile} onPoll={openPoll} onLogout={logout} toast={toast} onUsers={goUsers} onResetRole={resetRole}/>}
+      {authState==="app" && profile && screen==="dashboard" && profile.role==="sir"     && <SirDashboard     profile={profile} onPoll={openPoll} onLogout={logout} onResetRole={resetRole}/>}
+      {authState==="app" && profile && screen==="dashboard" && profile.role==="student" && <StudentDashboard profile={profile} onPoll={openPoll} onLogout={logout} onResetRole={resetRole}/>}
+      {authState==="app" && profile && screen==="poll"      && <PollScreen pollId={pollId} profile={profile} onBack={goBack} toast={toast} onResetRole={resetRole}/>}
+      {authState==="app" && profile && screen==="users"     && <UsersPage profile={profile} onBack={backToDash} onLogout={logout} onResetRole={resetRole}/>}
 
       <Toasts list={toasts}/>
     </div>
