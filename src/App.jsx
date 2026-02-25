@@ -1007,21 +1007,42 @@ export default function App() {
   }
 
   useEffect(() => {
-    // Handle OAuth redirect
-    supabase.auth.getSession().then(async ({ data:{ session } }) => {
-      if (!session) { setAuthState("login"); return; }
-      setSupaUser(session.user);
-      const prof = await loadProfile(session.user.id);
-      if (!prof) { setAuthState("login"); return; }
-      // Check if role was explicitly chosen (marker in metadata)
-      const { data:meta } = await supabase.auth.getUser();
-      const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
-      if (!isRoleChosen) {
-        setAuthState("role_setup");
-      } else {
-        setProfile(prof); setAuthState("app");
+    // Handle OAuth redirect: prefer getSessionFromUrl() to process hash fragments returned by providers
+    (async () => {
+      try {
+        const fromUrl = await supabase.auth.getSessionFromUrl();
+        const sessionFromUrl = fromUrl?.data?.session;
+        if (sessionFromUrl) {
+          // Clean URL (remove query string / hash with tokens)
+          try { history.replaceState(null, '', location.pathname + location.search.replace(/[?&]error[^&]*/g, '')); } catch {}
+          setSupaUser(sessionFromUrl.user);
+          const prof = await loadProfile(sessionFromUrl.user.id);
+          if (!prof) { setAuthState("login"); return; }
+          const { data:meta } = await supabase.auth.getUser();
+          const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
+          if (!isRoleChosen) setAuthState("role_setup"); else { setProfile(prof); setAuthState("app"); }
+          return;
+        }
+      } catch (e) {
+        // ignore and fallback to getSession()
+        console.debug('getSessionFromUrl error', e);
       }
-    });
+
+      // Fallback: check existing session
+      supabase.auth.getSession().then(async ({ data:{ session } }) => {
+        if (!session) { setAuthState("login"); return; }
+        setSupaUser(session.user);
+        const prof = await loadProfile(session.user.id);
+        if (!prof) { setAuthState("login"); return; }
+        const { data:meta } = await supabase.auth.getUser();
+        const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
+        if (!isRoleChosen) {
+          setAuthState("role_setup");
+        } else {
+          setProfile(prof); setAuthState("app");
+        }
+      });
+    })();
 
     // Listen for auth changes
     const { data:{ subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
