@@ -982,6 +982,7 @@ export default function App() {
   const [profile,   setProfile]  = useState(null);
   const [screen,    setScreen]   = useState("dashboard");
   const [pollId,    setPollId]   = useState(null);
+  const [showParticles, setShowParticles] = useState(false);
   const { list:toasts, push:toast } = useToast();
 
   // Load profile from DB
@@ -1064,6 +1065,20 @@ export default function App() {
     }
   }, [authState, profile]);
 
+  // Defer expensive particle rendering until browser is idle to speed initial load
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let handle;
+    if ('requestIdleCallback' in window) {
+      handle = window.requestIdleCallback(() => setShowParticles(true));
+    } else {
+      handle = setTimeout(() => setShowParticles(true), 800);
+    }
+    return () => {
+      if (typeof handle === 'number') { try { window.cancelIdleCallback?.(handle); } catch {} clearTimeout(handle); }
+    };
+  }, []);
+
   return (
     <div style={{ background:"#02040e", minHeight:"100vh", color:"#dff0ff", fontFamily:"'Rajdhani',sans-serif" }}>
       <style>{`
@@ -1079,7 +1094,7 @@ export default function App() {
         body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.02) 2px,rgba(0,0,0,.02) 4px);pointer-events:none;z-index:9997;}
       `}</style>
 
-      <Particles/>
+      {showParticles && <Particles/>}
       <div style={{ position:"fixed",width:520,height:520,borderRadius:"50%",background:"#bf00ff",filter:"blur(110px)",opacity:.06,top:-160,left:-160,pointerEvents:"none",zIndex:0 }}/>
       <div style={{ position:"fixed",width:420,height:420,borderRadius:"50%",background:"#00f5ff",filter:"blur(110px)",opacity:.05,bottom:-120,right:-120,pointerEvents:"none",zIndex:0 }}/>
 
