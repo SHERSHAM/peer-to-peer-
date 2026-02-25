@@ -986,9 +986,17 @@ export default function App() {
   const [showParticles, setShowParticles] = useState(false);
   const { list:toasts, push:toast } = useToast();
 
-  // Load profile from DB
+  // Load profile from DB, or create if doesn't exist
   async function loadProfile(uid) {
-    const { data } = await supabase.from("profiles").select("*").eq("id",uid).single();
+    let { data } = await supabase.from("profiles").select("*").eq("id",uid).single();
+    if (!data) {
+      // Create default profile on first login
+      const { data: newProf } = await supabase.from("profiles")
+        .insert([{ id: uid, role: "student", name: "", email: "", created_at: new Date().toISOString() }])
+        .select()
+        .single();
+      if (newProf) data = newProf;
+    }
     return data;
   }
 
@@ -999,8 +1007,10 @@ export default function App() {
       setSupaUser(session.user);
       const prof = await loadProfile(session.user.id);
       if (!prof) { setAuthState("login"); return; }
-      if (!prof.role || prof.role==="student" && !prof.name) {
-        // Check if this is truly first time (no role set yet beyond default)
+      // Check if role was explicitly chosen (marker in metadata)
+      const { data:meta } = await supabase.auth.getUser();
+      const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
+      if (!isRoleChosen) {
         setAuthState("role_setup");
       } else {
         setProfile(prof); setAuthState("app");
@@ -1011,15 +1021,17 @@ export default function App() {
     const { data:{ subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event==="SIGNED_IN"&&session) {
         setSupaUser(session.user);
-        // Wait a moment for trigger to create profile
+        // Wait a moment for profile to be created
         setTimeout(async () => {
           const prof = await loadProfile(session.user.id);
-          if (prof && prof.role) {
-            // Check if role was set (not just defaulted)
+          if (prof) {
             const { data:meta } = await supabase.auth.getUser();
-            const isNew = !meta?.user?.user_metadata?.role_chosen;
-            if (isNew) { setAuthState("role_setup"); }
-            else { setProfile(prof); setAuthState("app"); }
+            const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
+            if (isRoleChosen) {
+              setProfile(prof); setAuthState("app");
+            } else {
+              setAuthState("role_setup");
+            }
           } else {
             setAuthState("role_setup");
           }
