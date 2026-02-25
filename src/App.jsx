@@ -360,7 +360,7 @@ function LoginScreen({ toast }) {
         </div>
         <div style={{ fontFamily:"'Share Tech Mono',monospace", color:"#506880", letterSpacing:5,
           fontSize:13, marginTop:14, textTransform:"uppercase" }}>
-          ⚡ Hackathon Voting Platform ⚡
+          ⚡ Voting Platform ⚡
         </div>
       </div>
 
