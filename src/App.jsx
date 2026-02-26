@@ -998,66 +998,83 @@ export default function App() {
   }
 
   useEffect(() => {
+    let timeoutId = null;
+    let isMounted = true;
+    
     // Handle OAuth redirect: prefer getSessionFromUrl() to process hash fragments returned by providers
     (async () => {
       try {
         const fromUrl = await supabase.auth.getSessionFromUrl();
         const sessionFromUrl = fromUrl?.data?.session;
-        if (sessionFromUrl) {
+        if (sessionFromUrl && isMounted) {
           // Clean URL (remove query string / hash with tokens)
           try { history.replaceState(null, '', location.pathname + location.search.replace(/[?&]error[^&]*/g, '')); } catch {}
           setSupaUser(sessionFromUrl.user);
           const prof = await loadProfile(sessionFromUrl.user.id);
-          if (!prof) { setAuthState("login"); return; }
+          if (!prof || !isMounted) { if(isMounted) setAuthState("login"); return; }
           const { data:meta } = await supabase.auth.getUser();
           const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
-          if (!isRoleChosen) setAuthState("role_setup"); else { setProfile(prof); setAuthState("app"); }
+          if (isMounted) {
+            if (!isRoleChosen) setAuthState("role_setup"); else { setProfile(prof); setAuthState("app"); }
+          }
           return;
         }
       } catch (e) {
-        // ignore and fallback to getSession()
         console.debug('getSessionFromUrl error', e);
       }
 
       // Fallback: check existing session
-      supabase.auth.getSession().then(async ({ data:{ session } }) => {
-        if (!session) { setAuthState("login"); return; }
-        setSupaUser(session.user);
-        const prof = await loadProfile(session.user.id);
-        if (!prof) { setAuthState("login"); return; }
-        const { data:meta } = await supabase.auth.getUser();
-        const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
-        if (!isRoleChosen) {
-          setAuthState("role_setup");
-        } else {
-          setProfile(prof); setAuthState("app");
-        }
-      });
+      if (isMounted) {
+        supabase.auth.getSession().then(async ({ data:{ session } }) => {
+          if (!isMounted) return;
+          if (!session) { setAuthState("login"); return; }
+          setSupaUser(session.user);
+          const prof = await loadProfile(session.user.id);
+          if (!prof || !isMounted) { if(isMounted) setAuthState("login"); return; }
+          const { data:meta } = await supabase.auth.getUser();
+          const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
+          if (isMounted) {
+            if (!isRoleChosen) setAuthState("role_setup"); else { setProfile(prof); setAuthState("app"); }
+          }
+        });
+      }
     })();
 
     // Listen for auth changes
     const { data:{ subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
       if (event==="SIGNED_IN"&&session) {
         setSupaUser(session.user);
-        // Wait a moment for profile to be created
-        setTimeout(async () => {
+        // Wait a moment for profile to be created; cancel if unmounted
+        timeoutId = setTimeout(async () => {
+          if (!isMounted) return;
           const prof = await loadProfile(session.user.id);
+          if (!isMounted) return;
           if (prof) {
             const { data:meta } = await supabase.auth.getUser();
             const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
-            if (isRoleChosen) {
-              setProfile(prof); setAuthState("app");
-            } else {
-              setAuthState("role_setup");
+            if (isMounted) {
+              if (isRoleChosen) {
+                setProfile(prof); setAuthState("app");
+              } else {
+                setAuthState("role_setup");
+              }
             }
-          } else {
+          } else if (isMounted) {
             setAuthState("role_setup");
           }
         }, 800);
       }
-      if (event==="SIGNED_OUT") { setAuthState("login"); setProfile(null); setSupaUser(null); }
+      if (event==="SIGNED_OUT") { 
+        if (isMounted) { setAuthState("login"); setProfile(null); setSupaUser(null); }
+      }
     });
-    return () => subscription.unsubscribe();
+    
+    return () => {
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+      subscription?.unsubscribe();
+    };
   }, []);
 
   // Check for QR deep link
