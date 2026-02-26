@@ -1004,6 +1004,7 @@ export default function App() {
     // Handle OAuth redirect: prefer getSessionFromUrl() to process hash fragments returned by providers
     (async () => {
       try {
+        if (!isMounted) return;
         const fromUrl = await supabase.auth.getSessionFromUrl();
         const sessionFromUrl = fromUrl?.data?.session;
         if (sessionFromUrl && isMounted) {
@@ -1025,8 +1026,10 @@ export default function App() {
 
       // Fallback: check existing session
       if (isMounted) {
-        supabase.auth.getSession().then(async ({ data:{ session } }) => {
+        try {
+          const { data:{ session }, error } = await supabase.auth.getSession();
           if (!isMounted) return;
+          if (error) throw error;
           if (!session) { setAuthState("login"); return; }
           setSupaUser(session.user);
           const prof = await loadProfile(session.user.id);
@@ -1036,37 +1039,49 @@ export default function App() {
           if (isMounted) {
             if (!isRoleChosen) setAuthState("role_setup"); else { setProfile(prof); setAuthState("app"); }
           }
-        });
+        } catch (e) {
+          console.error('Session check error:', e);
+          if (isMounted) setAuthState("login");
+        }
       }
     })();
 
     // Listen for auth changes
     const { data:{ subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
-      if (event==="SIGNED_IN"&&session) {
-        setSupaUser(session.user);
-        // Wait a moment for profile to be created; cancel if unmounted
-        timeoutId = setTimeout(async () => {
-          if (!isMounted) return;
-          const prof = await loadProfile(session.user.id);
-          if (!isMounted) return;
-          if (prof) {
-            const { data:meta } = await supabase.auth.getUser();
-            const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
-            if (isMounted) {
-              if (isRoleChosen) {
-                setProfile(prof); setAuthState("app");
-              } else {
+      try {
+        if (event==="SIGNED_IN"&&session) {
+          setSupaUser(session.user);
+          // Wait a moment for profile to be created; cancel if unmounted
+          timeoutId = setTimeout(async () => {
+            if (!isMounted) return;
+            try {
+              const prof = await loadProfile(session.user.id);
+              if (!isMounted) return;
+              if (prof) {
+                const { data:meta } = await supabase.auth.getUser();
+                const isRoleChosen = meta?.user?.user_metadata?.role_chosen === true;
+                if (isMounted) {
+                  if (isRoleChosen) {
+                    setProfile(prof); setAuthState("app");
+                  } else {
+                    setAuthState("role_setup");
+                  }
+                }
+              } else if (isMounted) {
                 setAuthState("role_setup");
               }
+            } catch (e) {
+              console.error('SIGNED_IN callback error:', e);
+              if (isMounted) setAuthState("role_setup");
             }
-          } else if (isMounted) {
-            setAuthState("role_setup");
-          }
-        }, 800);
-      }
-      if (event==="SIGNED_OUT") { 
-        if (isMounted) { setAuthState("login"); setProfile(null); setSupaUser(null); }
+          }, 800);
+        }
+        if (event==="SIGNED_OUT") { 
+          if (isMounted) { setAuthState("login"); setProfile(null); setSupaUser(null); }
+        }
+      } catch (e) {
+        console.error('Auth state change error:', e);
       }
     });
     
@@ -1095,9 +1110,27 @@ export default function App() {
   }
 
   async function logout() {
-    await supabase.auth.signOut();
-    setAuthState("login"); setProfile(null); setSupaUser(null);
-    setScreen("dashboard"); setPollId(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
+    // Fully reset all state
+    setAuthState("login");
+    setProfile(null);
+    setSupaUser(null);
+    setScreen("dashboard");
+    setPollId(null);
+    setShowParticles(false);
+    // Force particles to re-render on next login
+    setTimeout(() => setShowParticles(false), 100);
+    // Clear any lingering storage
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {
+      console.error('Storage clear error:', e);
+    }
   }
 
   function openPoll(id) { setPollId(id); setScreen("poll"); }
