@@ -4,7 +4,7 @@ import supabase from './supabaseClient'
 // ═══════════════════════════════════════════════════════════════════════════════
 // ROLE SECRETS  (used when setting role after first login)
 // ═══════════════════════════════════════════════════════════════════════════════
-const ROLE_SECRETS = { admin: "", sir: "" };
+const ROLE_SECRETS = { admin: "HACKsir2025", sir: "HACKADMIN2025" };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SCORE ENGINE
