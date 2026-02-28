@@ -406,7 +406,7 @@ function LoginScreen({ toast }) {
 
         <div style={{ marginTop:18, fontFamily:"'Share Tech Mono',monospace", fontSize:11, color:"#506880", lineHeight:1.7 }}>
           First login? You'll be asked to choose your role.<br/>
-          Sir key: <span style={{ color:"#ffee00" }}>HACKsir2025</span> &nbsp;|&nbsp; Admin key: <span style={{ color:"#bf00ff" }}>HACKADMIN2025</span>
+          Sir key: <span style={{ color:"#ffee00" }}></span> &nbsp;|&nbsp; Admin key: <span style={{ color:"#bf00ff" }}></span>
         </div>
       </Panel>
     </div>
