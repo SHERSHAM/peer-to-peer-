@@ -306,7 +306,7 @@ function RoleSetupScreen({ user, onDone, toast }) {
                 borderRadius:7, color:"#dff0ff", fontFamily:"'Rajdhani',sans-serif", fontSize:16,
                 padding:"11px 14px", outline:"none", boxSizing:"border-box" }}/>
             <div style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:10, color:"#506880", marginTop:6 }}>
-              {role==="sir"?"Sir key: HACKsir2025":"Admiin key: HACKADMIN2025"}
+              {role==="sir"?"Sir key: HACKsir2025":"Admin key: HACKADMIN2025"}
             </div>
           </div>
         )}
