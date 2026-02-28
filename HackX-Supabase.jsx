@@ -12,7 +12,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 // ═══════════════════════════════════════════════════════════════════════════════
 // ROLE SECRETS  (used when setting role after first login)
 // ═══════════════════════════════════════════════════════════════════════════════
-const ROLE_SECRETS = { admin: "", sir: "" };
+const ROLE_SECRETS = { admin: "HACKADMIN2025", sir: "HACKsir2025" };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SCORE ENGINE
@@ -308,7 +308,7 @@ function RoleSetupScreen({ user, onDone, toast }) {
                 borderRadius:7, color:"#dff0ff", fontFamily:"'Rajdhani',sans-serif", fontSize:16,
                 padding:"11px 14px", outline:"none", boxSizing:"border-box" }}/>
             <div style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:10, color:"#506880", marginTop:6 }}>
-              {role==="sir"?"Sir key: ":"Admin key: "}
+              {role==="sir"?"Sir key:HACKsir2025 ":"Admin key: HACKADMIN2025"}
             </div>
           </div>
         )}
